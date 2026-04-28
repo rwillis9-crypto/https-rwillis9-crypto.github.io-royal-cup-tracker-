@@ -1,8 +1,6 @@
 name: Daily Email Recap
 
 on:
-  schedule:
-    - cron: "30 12 * * 1-5"
   workflow_dispatch:
 
 jobs:
@@ -11,4 +9,28 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      - run: echo "It works"
+
+      - name: Build email
+        run: |
+          node <<'EOF'
+          const fs = require('fs');
+          const { buildDailyEmail } = require('./email-recap');
+
+          const data = JSON.parse(fs.readFileSync('data.json', 'utf8'));
+          const html = buildDailyEmail(data);
+
+          fs.writeFileSync('email.html', html);
+          console.log("Email built");
+          EOF
+
+      - name: Send email
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 587
+          username: ${{ secrets.EMAIL_USER }}
+          password: ${{ secrets.EMAIL_PASS }}
+          subject: "✅ TEST – My Day Recap"
+          body: file://email.html
+          to: yourgmail@gmail.com
+          from: My Day Bot <yourgmail@gmail.com>
